@@ -1,0 +1,422 @@
+
+# Import libraries
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import numpy as np
+
+# Define hyperparameters
+num_agents = 3 # Number of agents
+num_actions = 5 # Number of actions per agent
+state_dim = 10 # Dimension of state space
+hidden_dim = 64 # Dimension of hidden layer
+embed_dim = 16 # Dimension of policy embedding
+gamma = 0.99 # Discount factor
+alpha = 0.01 # Learning rate
+beta = 0.1 # Coefficient for policy embedding loss
+tau = 0.01 # Soft update coefficient
+
+# Define actor network
+class Actor(nn.Module):
+    def __init__(self, state_dim, num_actions, hidden_dim):
+        super(Actor, self).__init__()
+        self.fc1 = nn.Linear(state_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, num_actions)
+    
+    def forward(self, state):
+        x = F.relu(self.fc1(state))
+        x = F.softmax(self.fc2(x), dim=-1)
+        return x
+
+# Define critic network
+class Critic(nn.Module):
+    def __init__(self, state_dim, num_agents, hidden_dim):
+        super(Critic, self).__init__()
+        self.fc1 = nn.Linear(state_dim + num_agents * embed_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, 1)
+    
+    def forward(self, state, policy_embeds):
+        x = torch.cat([state, policy_embeds], dim=-1)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+# Define policy embedding network
+class PolicyEmbed(nn.Module):
+    def __init__(self, state_dim, embed_dim, hidden_dim):
+        super(PolicyEmbed, self).__init__()
+        self.fc1 = nn.Linear(state_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, embed_dim)
+    
+    def forward(self, state):
+        x = F.relu(self.fc1(state))
+        x = self.fc2(x)
+        return x
+
+# Initialize actor networks for each agent
+actors = [Actor(state_dim, num_actions, hidden_dim) for _ in range(num_agents)]
+actors_target = [Actor(state_dim, num_actions, hidden_dim) for _ in range(num_agents)]
+
+# Initialize critic network shared by all agents
+critic = Critic(state_dim, num_agents, hidden_dim)
+critic_target = Critic(state_dim, num_agents, hidden_dim)
+
+# Initialize policy embedding network shared by all agents
+policy_embed = PolicyEmbed(state_dim, embed_dim, hidden_dim)
+
+# Initialize optimizers for actor and critic networks
+optimizers_actor = [optim.Adam(actor.parameters(), lr=alpha) for actor in actors]
+optimizer_critic = optim.Adam(critic.parameters(), lr=alpha)
+
+# Initialize optimizer for policy embedding network
+optimizer_policy_embed = optim.Adam(policy_embed.parameters(), lr=alpha)
+
+# Define a function to soft update the target networks
+def soft_update(target_net, source_net):
+    for target_param, source_param in zip(target_net.parameters(), source_net.parameters()):
+        target_param.data.copy_(tau * source_param.data + (1 - tau) * target_param.data)
+
+# Define a function to train PERLA
+def train_PERLA(states, actions, rewards, next_states, dones):
+
+    # Convert numpy arrays to tensors
+    states = torch.from_numpy(states).float()
+    actions = torch.from_numpy(actions).float()
+    rewards = torch.from_numpy(rewards).float()
+    next_states = torch.from_numpy(next_states).float()
+    dones = torch.from_numpy(dones).float()
+
+    # Compute policy embeddings for current and next states
+    policy_embeds = policy_embed(states) # Shape: (batch_size, num_agents * embed_dim)
+    policy_embeds_next = policy_embed(next_states) # Shape: (batch_size, num_agents * embed_dim)
+
+    # Compute target Q-values using target networks and policy embeddings
+    with torch.no_grad():
+        actions_next = [actor_target(next_states) for actor_target in actors_target] # List of tensors of shape: (batch_size, num_actions)
+        actions_next = torch.stack(actions_next).transpose(0, 1).reshape(-1, num_agents * num_actions) # Shape: (batch_size, num_agents * num_actions)
+        Q_targets_next = critic_target(next_states, policy_embeds_next) # Shape: (batch_size, 1)
+        Q_targets = rewards + (gamma * Q_targets_next * (1 - dones)) # Shape: (batch_size, 1)
+
+    # Compute current Q-values using critic network and policy embeddings
+    Q_values = critic(states, policy_embeds) # Shape: (batch_size, 1)
+
+    # Compute critic loss as mean squared error
+    critic_loss = F.mse_loss(Q_values, Q_targets)
+
+    # Update critic network parameters using backpropagation and gradient descent
+    optimizer_critic.zero_grad()
+    critic_loss.backward()
+    optimizer_critic.step()
+
+    # Update policy embedding network parameters using backpropagation and gradient descent
+    optimizer_policy_embed.zero_grad()
+    critic_loss.backward()
+    optimizer_policy_embed.step()
+
+    # Loop over each agent
+    for i in range(num_agents):
+
+        # Compute actor loss as negative of expected Q-values
+        actions_pred = [actor(states) for actor in actors] # List of tensors of shape: (batch_size, num_actions)
+        actions_pred[i] = actors[i](states) # Replace i-th agent's actions with current actor network output
+        actions_pred = torch.stack(actions_pred).transpose(0, 1).reshape(-1, num_agents * num_actions) # Shape: (batch_size, num_agents * num_actions)
+        actor_loss = -critic(states, policy_embeds).mean() # Shape: scalar
+
+        # Compute policy embedding loss as mean squared error between policy embeddings and actor network outputs
+        policy_embed_loss = F.mse_loss(policy_embeds[:, i * embed_dim : (i + 1) * embed_dim], actors[i](states)) # Shape: scalar
+
+        # Update actor network parameters using backpropagation and gradient descent
+        optimizers_actor[i].zero_grad()
+        (actor_loss + beta * policy_embed_loss).backward()
+        optimizers_actor[i].step()
+
+        # Soft update the target networks
+        soft_update(actors_target[i], actors[i])
+    
+    # Soft update the target critic network
+    soft_update(critic_target, critic)
+
+% Environment
+
+# Import libraries
+import gym
+import numpy as np
+
+# Define a class for a multi-agent environment
+class MultiAgentEnv(gym.Env):
+    def __init__(self, num_agents, state_dim, num_actions):
+        # Initialize the number of agents, state dimension and action dimension
+        self.num_agents = num_agents
+        self.state_dim = state_dim
+        self.num_actions = num_actions
+
+        # Define the observation space and action space for each agent
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(state_dim,))
+        self.action_space = gym.spaces.Discrete(num_actions)
+
+        # Define the initial state of the environment
+        self.state = np.random.randn(state_dim)
+
+    def reset(self):
+        # Reset the state of the environment to a random initial state
+        self.state = np.random.randn(state_dim)
+        return self.state
+
+    def step(self, actions):
+        # Take a step in the environment given a list of actions from each agent
+        assert len(actions) == self.num_agents # Check that the number of actions matches the number of agents
+
+        # Compute the next state of the environment as a function of the current state and actions
+        # This is a dummy function that can be replaced with a more realistic one
+        next_state = self.state + np.sum(actions) + np.random.randn(self.state_dim)
+
+        # Compute the reward for each agent as a function of the current state, actions and next state
+        # This is a dummy function that can be replaced with a more realistic one
+        rewards = np.dot(self.state, actions) + np.dot(next_state, next_state)
+
+        # Compute the done signal for each agent as a function of the next state
+        # This is a dummy function that can be replaced with a more realistic one
+        dones = np.linalg.norm(next_state) > 10
+
+        # Update the state of the environment
+        self.state = next_state
+
+        return next_state, rewards, dones, {}
+
+# Import the MultiAgentEnv class
+from multi_agent_env import MultiAgentEnv
+
+# Create an instance of the environment with 3 agents, state dimension of 10 and action dimension of 5
+env = MultiAgentEnv(num_agents=3, state_dim=10, num_actions=5)
+
+# Import the Actor class
+from actor import Actor
+
+# Define the number of agents, state dimension and action dimension
+num_agents = 3
+state_dim = 10
+num_actions = 5
+
+# Create an empty list for actors and actors target
+actors = []
+actors_target = []
+
+# Loop over the number of agents
+for _ in range(num_agents):
+    # Create an instance of the actor network with the state dimension and action dimension
+    actor = Actor(state_dim, num_actions)
+    # Create an instance of the actor target network with the same parameters as the actor network
+    actor_target = Actor(state_dim, num_actions)
+    actor_target.load_state_dict(actor.state_dict()) # Copy the weights from the actor network
+    # Append the actor and actor target to the lists
+    actors.append(actor)
+    actors_target.append(actor_target)
+
+
+# Import the Critic class
+from critic import Critic
+
+# Define the state dimension, number of agents and policy embedding dimension
+state_dim = 10
+num_agents = 3
+embed_dim = 16
+
+# Create an instance of the critic network with the state dimension, number of agents and policy embedding dimension
+critic = Critic(state_dim, num_agents, embed_dim)
+
+# Create an instance of the critic target network with the same parameters as the critic network
+critic_target = Critic(state_dim, num_agents, embed_dim)
+critic_target.load_state_dict(critic.state_dict()) # Copy the weights from the critic network
+
+# Import the PolicyEmbed class
+from policy_embed import PolicyEmbed
+
+# Define the state dimension and policy embedding dimension
+state_dim = 10
+embed_dim = 16
+
+# Create an instance of the policy embedding network with the state dimension and policy embedding dimension
+policy_embed = PolicyEmbed(state_dim, embed_dim)
+
+
+# Import the torch.optim library
+import torch.optim as optim
+
+# Define the number of agents and learning rate
+num_agents = 3
+alpha = 0.01
+
+# Create an empty list for optimizers
+optimizers_actor = []
+
+# Loop over the number of agents
+for i in range(num_agents):
+    # Create an instance of the Adam optimizer with the actor network parameters and learning rate
+    optimizer_actor = optim.Adam(actors[i].parameters(), lr=alpha)
+    # Append the optimizer to the list
+    optimizers_actor.append(optimizer_actor)
+
+
+# Create an instance of the Adam optimizer with the critic network parameters and learning rate
+optimizer_critic = optim.Adam(critic.parameters(), lr=alpha)
+
+
+# Create an instance of the Adam optimizer with the policy embedding network parameters and learning rate
+optimizer_policy_embed = optim.Adam(policy_embed.parameters(), lr=alpha)
+
+
+# Import libraries
+import numpy as np
+import random
+
+# Define a class for a simple shared memory
+class SimpleMemory:
+    def __init__(self, capacity):
+        # Initialize the capacity of the memory
+        self.capacity = capacity
+        # Initialize an empty list for storing experiences
+        self.buffer = []
+    
+    def push(self, state, action, reward, next_state, done):
+        # Push a new experience to the memory
+        # If the memory is full, pop the oldest experience
+        if len(self.buffer) == self.capacity:
+            self.buffer.pop(0)
+        # Append the new experience to the memory
+        self.buffer.append((state, action, reward, next_state, done))
+    
+    def sample(self, batch_size):
+        # Sample a batch of experiences from the memory
+        # If the memory has less than batch_size experiences, return all of them
+        if len(self.buffer) < batch_size:
+            batch_size = len(self.buffer)
+        # Randomly select a batch of experiences from the memory
+        batch = random.sample(self.buffer, batch_size)
+        # Unpack the batch into separate arrays for each element of the experience
+        states, actions, rewards, next_states, dones = zip(*batch)
+        # Convert the arrays to numpy arrays
+        states = np.array(states)
+        actions = np.array(actions)
+        rewards = np.array(rewards)
+        next_states = np.array(next_states)
+        dones = np.array(dones)
+        return states, actions, rewards, next_states, dones
+    
+    def __len__(self):
+        # Return the current size of the memory
+        return len(self.buffer)
+
+
+
+# Define the capacity and batch size of the memory
+capacity = 10000
+batch_size = 32
+
+# Create an instance of the simple shared memory with the capacity
+memory = SimpleMemory(capacity)
+
+# Define a function that generates minibatches of experiences from the memory
+def generate_minibatches():
+    # Sample a minibatch of experiences from the memory using the sample method
+    states, actions, rewards, next_states, dones = memory.sample(batch_size)
+    # Return the minibatch of experiences
+    return states, actions, rewards, next_states, dones
+
+
+
+# Import libraries
+import numpy as np
+
+# Define the number of episodes and the maximum number of steps per episode
+num_episodes = 100
+max_steps = 1000
+
+# Initialize an empty list to store the total rewards per episode
+total_rewards = []
+
+# Initialize an empty list to store the variances of value estimates per episode
+value_variances = []
+
+# Loop over the number of episodes
+for i in range(num_episodes):
+    # Reset the environment and get the initial state
+    state = env.reset()
+    # Initialize a variable to store the total reward for the current episode
+    total_reward = 0
+    # Initialize an empty list to store the value estimates for the current episode
+    value_estimates = []
+    # Loop over the maximum number of steps per episode or until the episode is done
+    for j in range(max_steps):
+        # Initialize an empty list to store the actions for each agent
+        actions = []
+        # Loop over the number of agents
+        for k in range(num_agents):
+            # Select an action using the corresponding actor network and an exploration strategy (e.g., epsilon-greedy)
+            # This is a dummy function that can be replaced with a more realistic one
+            action = epsilon_greedy(actors[k], state, epsilon)
+            # Append the action to the list of actions
+            actions.append(action)
+        # Execute the actions in the environment and get the next state, reward, done signal and additional information
+        next_state, reward, done, info = env.step(actions)
+        # Store the experience (state, action, reward, next_state, done) in the shared memory using the push method
+        memory.push(state, actions, reward, next_state, done)
+        # Update the state with the next state
+        state = next_state
+        # Add the reward to the total reward variable
+        total_reward += reward
+        # Calculate the value estimate using the critic network and policy embedding and append it to the list of value estimates
+        value_estimate = critic(state, policy_embed(state))
+        value_estimates.append(value_estimate)
+        # If the memory has enough experiences, generate a minibatch of experiences using the generate_minibatches function and use the train_PERLA function to update the parameters of the neural networks
+        if len(memory) >= batch_size:
+            states, actions, rewards, next_states, dones = generate_minibatches()
+            train_PERLA(states, actions, rewards, next_states, dones)
+        # If the episode is done, break out of the loop
+        if done:
+            break
+    # Append the total reward to the list of total rewards per episode
+    total_rewards.append(total_reward)
+    # Calculate the variance of value estimates and append it to the list of variances of value estimates per episode
+    value_variance = np.var(value_estimates)
+    value_variances.append(value_variance)
+    # Print the metrics of interest such as the total reward and variance of value estimates for the current episode
+    print(f"Episode {i}: Total reward = {total_reward}, Value variance = {value_variance}")
+
+
+
+# Import the matplotlib and seaborn libraries
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Set the style and font size of the plots
+sns.set_style("darkgrid")
+sns.set_context("notebook", font_scale=1.5)
+
+# Create a plot of the total rewards per episode
+plt.figure(figsize=(10, 6)) # Set the figure size
+plt.plot(total_rewards) # Plot the total rewards
+plt.xlabel("Episode") # Set the x-axis label
+plt.ylabel("Total reward") # Set the y-axis label
+plt.title("Total rewards per episode") # Set the title
+plt.show() # Show the plot
+
+# Create a plot of the variances of value estimates per episode
+plt.figure(figsize=(10, 6)) # Set the figure size
+plt.plot(value_variances) # Plot the value variances
+plt.xlabel("Episode") # Set the x-axis label
+plt.ylabel("Variance of value estimates") # Set the y-axis label
+plt.title("Variances of value estimates per episode") # Set the title
+plt.show() # Show the plot
+
+
+Link:
+
+https://1drv.ms/u/s!Anoc7zAt7kTqgSsYBqDjDJmx4KLt?e=Qd47OL
+
+
+
+
+
+
+
