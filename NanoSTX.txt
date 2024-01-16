@@ -1,0 +1,335 @@
+
+\textbf{Esplorare e sfruttare per modulare l'attività della tossina Stx sul recettore Gb3 con la nanoparticella NanoSTX.}
+
+\textbf{Premesse.}
+
+\begin{itemize}
+    \item \textbf{Batterio EHEC:}
+        \begin{itemize}
+            \item Un batterio EHEC è un ceppo entero-emorragico del batterio Escherichia coli, responsabile di malattie a trasmissione alimentare.
+            \item L'infezione provoca di solito diarrea emorragica e può portare alla sindrome emolitica uremica (SEU), una complicazione grave che può causare insufficienza renale acuta e risultare fatale.
+        \end{itemize}
+
+    \item \textbf{Tossina Stx:}
+        \begin{itemize}
+            \item La tossina Stx è un'esotossina prodotta dal batterio Shigella dysenteriae e da alcuni ceppi di E. coli, tra cui gli EHEC.
+            \item È una potente tossina marina idrosolubile che inibisce la trasmissione nervosa, bloccando i canali del sodio senza compromettere la permeabilità al potassio. Ciò porta al blocco della sintesi proteica e alla morte cellulare.
+            \item La tossina Stx è composta da una subunità A e cinque subunità B. La subunità A inibisce la sintesi proteica nelle cellule bersaglio, mentre le subunità B hanno un'attività recettoriale che consente alla tossina di legarsi al recettore Gb3 sulla superficie delle cellule.
+        \end{itemize}
+
+    \item \textbf{Glicolipide Gb3:}
+        \begin{itemize}
+            \item Il glicolipide Gb3 è un tipo di glicolipide, un composto formato da una molecola lipidica legata a una porzione glucidica.
+            \item Si trova sulla membrana delle cellule eucariotiche bersaglio della tossina Stx, principalmente a livello intestinale e renale.
+            \item Il glicolipide Gb3 funge da recettore per la tossina Stx, consentendo alla tossina di legarsi e penetrare nella cellula, dove esercita la sua azione citotossica.
+        \end{itemize}
+\end{itemize}
+
+\textbf{Scenario}
+Immaginiamo di avere un agente RL che è una nanoparticella progettata per modulare l'attività della tossina Stx sul recettore Gb3. Chiamiamo questa nanoparticella NanoSTX. NanoSTX può scegliere tra diverse azioni, come modificare la struttura della tossina Stx, alterare la concentrazione del recettore Gb3, variare il pH dell'ambiente, interagire con altri organelli della cellula, modificare la sua forma o dimensione, o comunicare con altre nanoparticelle. Ogni azione ha un costo e un beneficio associati, che dipendono dallo stato della tossina Stx, del recettore Gb3 e dell'ambiente. L'obiettivo di NanoSTX è di ottimizzare l'attività della tossina Stx, massimizzando il guadagno cumulativo.
+
+\textbf{Ambiente}
+
+L'ambiente in cui opera NanoSTX è una cellula eucariotica esposta alla tossina Stx prodotta dal batterio EHEC. La cellula ha una membrana plasmatica che contiene il recettore Gb3, un apparato di Golgi, un reticolo endoplasmatico e dei ribosomi. La tossina Stx ha una struttura AB5, formata da una subunità A e cinque subunità B. La subunità A ha un'attività enzimatica che inibisce la sintesi proteica, mentre le subunità B hanno un'attività recettoriale che permette alla tossina di legarsi al recettore Gb3. Il pH e la temperatura dell'ambiente sono variabili che influiscono sull'attività della tossina Stx. Inoltre, nell'ambiente possono essere presenti altre molecole o nanoparticelle che possono interagire con NanoSTX.
+
+\textbf{Framework}
+
+Per risolvere questo problema, possiamo usare il framework First-Explore, then Exploit: Meta-Learning Intelligent Exploration. Questo framework prevede di addestrare due politiche: una politica di esplorazione $\pi_e$ e una politica di sfruttamento $\pi_x$. La politica di esplorazione ha il compito di esplorare lo spazio delle azioni in modo intelligente, cercando di acquisire quante più informazioni possibili sulle conseguenze delle azioni. La politica di sfruttamento ha il compito di sfruttare le informazioni acquisite durante l'esplorazione, scegliendo le azioni che portano al maggior guadagno.
+
+Per addestrare le due politiche, usiamo un algoritmo di meta-apprendimento, che consiste nel generare diversi episodi di apprendimento, ciascuno con una tossina Stx, un recettore Gb3 e un ambiente diversi. In ogni episodio, NanoSTX esegue prima una fase di esplorazione, usando la politica $\pi_e$, e poi una fase di sfruttamento, usando la politica $\pi_x$. Il guadagno cumulativo ottenuto in ogni episodio viene usato come segnale di rinforzo per aggiornare le due politiche, usando un algoritmo di apprendimento per il gradiente della politica, come REINFORCE .
+
+\textbf{Esempio}
+
+\textbf{Nota.}
+
+Se l’ambiente è una cellula eucariota, il numero di stati possibili dipende dalle variabili che si vogliono considerare per descrivere lo stato della tossina Stx e del recettore Gb3. Per esempio, se si considerano solo la struttura, la concentrazione e il pH, si potrebbero avere i seguenti stati possibili:
+
+\begin{itemize}
+    \item Struttura della tossina Stx: AB5, AB4, AB3, AB2, AB1, A, B
+    \item Concentrazione del recettore Gb3: 0 mM, 5 mM, 10 mM, 15 mM, 20 mM (millimoli per litro)
+    \item pH dell’ambiente: 3, 4, 5, 6, 7, 8, 9
+\end{itemize}
+
+Il numero totale di stati possibili sarebbe quindi il prodotto delle possibili combinazioni di queste variabili, cioè 7 x 5 x 7 = 245. Tuttavia, questo numero potrebbe essere ridotto se si considerano solo gli stati raggiungibili da NanoSTX con le sue azioni. Per esempio, se NanoSTX non può modificare la struttura della tossina Stx in A o B, si potrebbero eliminare questi stati.
+
+Per modificare l’esempio, rendendolo più complesso ed esplorare e sfruttare tutti i casi possibili in cui NanoSTX può agire, si potrebbero aggiungere altre variabili per descrivere lo stato dell’ambiente, come la temperatura, la pressione, la presenza di altre molecole, ecc. Si potrebbero anche aggiungere altre azioni per NanoSTX, come interagire con altri organelli della cellula, modificare la sua forma o dimensione, comunicare con altre nanoparticelle, ecc. Questo aumenterebbe il numero di stati e azioni possibili, rendendo il problema più difficile da risolvere.
+
+Per illustrare il funzionamento del framework, mostriamo un esempio di un episodio di apprendimento. Supponiamo che NanoSTX abbia a disposizione sei azioni: A1 = modificare la struttura della tossina Stx, A2 = alterare la concentrazione del recettore Gb3, A3 = variare il pH dell'ambiente, A4 = interagire con altri organelli della cellula, A5 = modificare la sua forma o dimensione, A6 = comunicare con altre nanoparticelle. Supponiamo anche che NanoSTX abbia una priorità sul dominio, che gli dice che la tossina Stx ha una struttura AB5, che il recettore Gb3 ha una struttura trisaccaridica, e che il pH ottimale per l'attività della tossina Stx è 5. Inoltre, supponiamo che NanoSTX abbia già esplorato alcuni episodi precedenti, e abbia imparato che:
+
+\begin{itemize}
+    \item L'azione A1 ha un costo elevato, ma un beneficio variabile a seconda della modifica apportata alla tossina Stx.
+    \item L'azione A2 ha un costo medio, ma un beneficio medio a seconda della concentrazione del recettore Gb3.
+    \item L'azione A3 ha un costo basso, ma un beneficio alto se il pH è vicino a 5.
+    \item L'azione A4 ha un costo e un beneficio variabili a seconda dell'organello con cui interagisce.
+    \item L'azione A5 ha un costo e un beneficio variabili a seconda della forma o dimensione che assume.
+    \item L'azione A6 ha un costo e un beneficio variabili a seconda della nanoparticella con cui comunica.
+\end{itemize}
+
+In questo episodio, NanoSTX si trova in uno stato in cui la tossina Stx ha una struttura AB5, il recettore Gb3 ha una struttura trisaccaridica, il pH è 7 e la temperatura è 37°C. L'obiettivo di NanoSTX è di ottimizzare l'attività della tossina Stx, massimizzando il guadagno cumulativo.
+
+La fase di esplorazione consiste nel provare diverse azioni, per acquisire informazioni sulle loro conseguenze. La politica di esplorazione $\pi_e$ sceglie le azioni in modo probabilistico, usando una distribuzione di probabilità che dipende dallo stato e dal valore esplorativo delle azioni. Il valore esplorativo di un'azione a nello stato s è definito come: $$Q_e(s,a) = Q(s,a) + \beta \sqrt{\frac{\log N(s)}{N(s,a)}}$$ dove Q(s,a) è il valore di sfruttamento dell'azione a nello stato s, $\beta$ è un parametro che regola il grado di esplorazione, N(s) è il numero di volte che lo stato s è stato visitato e N(s,a) è il numero di volte che l'azione a è stata eseguita nello stato s. La formula per calcolare la probabilità di scegliere un'azione a in uno stato s è la seguente: $$p(a|s) = \frac{\exp(\alpha Q_e(s,a))}{\sum_{a'} \exp(\alpha Q_e(s,a'))}$$ dove $\alpha$ è un parametro che regola la sensibilità alla differenza di valore tra le azioni. Per esempio, la politica $\pi_e$ potrebbe assegnare le seguenti probabilità alle sei azioni:
+
+\begin{itemize}
+    \item P(A1) = 0.15
+    \item P(A2) = 0.25
+    \item P(A3) = 0.35
+    \item P(A4) = 0.10
+    \item P(A5) = 0.10
+    \item P(A6) = 0.05
+\end{itemize}
+
+NanoSTX esegue quindi una sequenza di azioni, usando la politica $\pi_e$, e osserva i risultati. Per esempio, NanoSTX potrebbe eseguire la seguente sequenza:
+
+\begin{itemize}
+    \item A3 $\ge$ +8 (variare il pH a 5 aumenta l'attività della tossina Stx, ma ha un costo basso)
+    \item A2 $\ge$ +4 (alterare la concentrazione del recettore Gb3 a 10 mM aumenta l'attività della tossina Stx, ma ha un costo medio)
+    \item A1 $\ge$ -2 (modificare la struttura della tossina Stx in AB4 riduce l'attività della tossina Stx, ma ha un costo elevato)
+    \item A5 $\ge$ +2 (modificare la sua forma in una sfera aumenta la sua mobilità, ma ha un costo medio)    
+\end{itemize}
+
+La fase di sfruttamento consiste nel scegliere le azioni che portano al maggior guadagno, usando le informazioni acquisite durante l'esplorazione. La politica di sfruttamento $\pi_x$ sceglie le azioni in modo deterministico, usando una funzione di valore che stima il guadagno atteso di ogni azione in ogni stato. La funzione di valore di un'azione a in uno stato s è definita come: $$Q(s,a) = r(s,a) + \gamma \sum_{s'} p(s'|s,a) V(s')$$ dove r(s,a) è la ricompensa immediata ottenuta eseguendo l'azione a nello stato s, $\gamma$ è un fattore di sconto che regola l'importanza delle ricompense future, p(s'|s,a) è la probabilità di transitare nello stato s' dopo aver eseguito l'azione a nello stato s e V(s') è il valore dello stato s'. La politica $\pi_x$ sceglie l'azione che ha il valore più alto in ogni stato, cioè: $$\pi_x(s) = \arg\max_a Q(s,a)$$ Per esempio, la politica $\pi_x$ potrebbe assegnare i seguenti valori alle sei azioni:
+
+\begin{itemize}
+    \item Q(s,A1) = -1
+    \item Q(s,A2) = 3
+    \item Q(s,A3) = 7
+    \item Q(s,A4) = 2
+    \item Q(s,A5) = 4
+    \item Q(s,A6) = 1
+\end{itemize}
+
+La politica $\pi_x$ sceglierebbe quindi l'azione A3, che ha il valore più alto.
+
+NanoSTX esegue quindi una sequenza di azioni, usando la politica $\pi_x$, e ottiene il guadagno cumulativo. Per esempio, NanoSTX potrebbe eseguire la seguente sequenza:
+
+\begin{itemize}
+    \item A3 $\ge$ +8
+    \item A3 $\ge$ +8
+    \item A3 $\ge$ +8
+    \item A3 $\ge$ +8
+\end{itemize}
+
+Il guadagno cumulativo ottenuto in questo episodio è 32, che viene usato come segnale di rinforzo per aggiornare le due politiche $\pi_e$ e $\pi_x$, usando l'algoritmo REINFORCE.
+
+L'algoritmo REINFORCE è un algoritmo di apprendimento per il gradiente della politica, che aggiorna i parametri della politica in modo da aumentare il guadagno cumulativo atteso. L'algoritmo REINFORCE segue i seguenti passi:
+
+\begin{itemize}
+    \item Genera un episodio seguendo la politica corrente, registrando gli stati, le azioni e le ricompense.
+    \item Per ogni passo dell'episodio, calcola il guadagno cumulativo futuro da quel passo in poi.
+    \item Per ogni passo dell'episodio, calcola il gradiente del logaritmo della probabilità dell'azione scelta, moltiplicato per il guadagno cumulativo futuro.
+    \item Aggiorna i parametri della politica sommando i gradienti calcolati, moltiplicati per un tasso di apprendimento.    
+\end{itemize}
+
+L'algoritmo REINFORCE si può usare in questo esempio per aggiornare sia la politica di esplorazione che la politica di sfruttamento, usando il guadagno cumulativo ottenuto in ogni episodio come segnale di rinforzo.
+
+!pip install gymnasium
+
+'''Per mostrarti una possibile implementazione più realistica del problema di
+NanoSTX, ho scelto di usare uno spazio di stati continuo, invece che discreto,
+per rappresentare la posizione e la velocità di NanoSTX, della tossina Stx e
+del recettore Gb3.
+
+Per fare questo, ho usato la classe gymnasium.spaces.Box, che permette di
+definire uno spazio multidimensionale con dei limiti inferiori e superiori.
+Ho modificato la classe GridEnv per creare una classe CellEnv, che eredita da
+gymnasium.Env e implementa le funzioni `__init__`, `reset`, `step` e `render`.
+Ho anche modificato la funzione `get_state` per restituire lo stato come un
+tensore di PyTorch di dimensione 6, contenente le coordinate e le velocità
+di NanoSTX, della tossina Stx e del recettore Gb3. '''
+
+# Importare i pacchetti necessari
+import gymnasium as gym
+import math
+import random
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+
+# Creare una classe CellEnv che eredita da gymnasium.Env
+class CellEnv(gym.Env):
+    def __init__(self, n, m, exit_pos, figure_pos, toxin_pos, receptor_pos):
+        self.n = n # lunghezza della cellula
+        self.m = m # larghezza della cellula
+        self.exit_pos = exit_pos # posizione dell'uscita
+        self.figure_pos = figure_pos # posizione iniziale di NanoSTX
+        self.toxin_pos = toxin_pos # posizione iniziale della tossina Stx
+        self.receptor_pos = receptor_pos # posizione iniziale del recettore Gb3
+        self.figure_vel = (0, 0) # velocità iniziale di NanoSTX
+        self.toxin_vel = (0, 0) # velocità iniziale della tossina Stx
+        self.receptor_vel = (0, 0) # velocità iniziale del recettore Gb3
+        self.action_space = gymnasium.spaces.Box(low=-1, high=1, shape=(2,))
+        # spazio delle azioni (accelerazione orizzontale e verticale di NanoSTX)
+
+        self.observation_space = gymnasium.spaces.Box(low=0, high=max(n,m),
+                                                      shape=(6,))
+        # spazio degli stati (coordinate e velocità di NanoSTX, della
+        # tossina Stx e del recettore Gb3)
+
+    def reset(self):
+        # Resettare lo stato dell'ambiente e restituire lo stato iniziale
+        self.figure_pos = self.init_pos
+        # riposizionare NanoSTX nella posizione iniziale
+
+        self.toxin_pos = self.toxin_pos
+        # riposizionare la tossina Stx nella posizione iniziale
+
+        self.receptor_pos = self.receptor_pos
+        # riposizionare il recettore Gb3 nella posizione iniziale
+
+        self.figure_vel = (0, 0) # azzerare la velocità di NanoSTX
+        self.toxin_vel = (0, 0) # azzerare la velocità della tossina Stx
+        self.receptor_vel = (0, 0) # azzerare la velocità del recettore Gb3
+        return self.get_state() # restituire lo stato iniziale
+
+    def step(self, action):
+        # Eseguire un'azione nello stato corrente e restituire il nuovo stato,
+        # la ricompensa, il flag di terminazione e le informazioni aggiuntive
+        self.move(action) # muovere NanoSTX, la tossina Stx e il recettore Gb3
+                          # secondo l'azione e le equazioni differenziali
+
+        state = self.get_state() # ottenere il nuovo stato
+        reward = self.get_reward()
+        # calcolare la ricompensa usando una funzione non lineare
+
+        done = self.is_at_exit() # controllare se NanoSTX ha raggiunto l'uscita
+        info = {} # non ci sono informazioni aggiuntive
+        return state, reward, done, info
+
+    def render(self, mode='human'):
+        # Visualizzare lo stato dell'ambiente in modo grafico o testuale
+        if mode == 'human':
+            # Visualizzare lo stato in modo testuale
+            # TODO: implementare la visualizzazione testuale
+            pass
+        elif mode == 'rgb_array':
+            # Visualizzare lo stato in modo grafico
+            # TODO: implementare la visualizzazione grafica
+            pass
+
+    def move(self, action):
+        # Muovere NanoSTX, la tossina Stx e il recettore Gb3 secondo
+        # l'azione e le equazioni differenziali
+        # TODO: implementare le equazioni differenziali
+        pass
+
+    def is_at_exit(self):
+        # Controllare se NanoSTX ha raggiunto l'uscita
+        return self.figure_pos == self.exit_pos
+
+    def get_state(self):
+        # Restituire lo stato come un tensore di PyTorch
+        return torch.FloatTensor([self.figure_pos[0], self.figure_pos[1],
+                                  self.figure_vel[0], self.figure_vel[1],
+                                  self.toxin_pos[0], self.toxin_pos[1],
+                                  self.toxin_vel[0], self.toxin_vel[1],
+                                  self.receptor_pos[0], self.receptor_pos[1],
+                                  self.receptor_vel[0],
+                                  self.receptor_vel[1]]).unsqueeze(0)
+
+    def get_reward(self):
+        # Calcolare la ricompensa usando una funzione non lineare
+        # TODO: implementare la funzione non lineare
+        pass
+
+# Creare una classe PolicyNet che eredita da nn.Module
+class PolicyNet(nn.Module):
+    def __init__(self):
+        super(PolicyNet, self).__init__()
+        self.fc1 = nn.Linear(6, 16)
+        # primo strato completamente connesso con 16 unità
+
+        self.fc2 = nn.Linear(16, 2)
+        # secondo strato completamente connesso con 2 unità
+        # (una per ogni azione)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        # applicare la funzione di attivazione ReLU al primo strato
+
+        x = self.fc2(x) # applicare il secondo strato
+
+        x = F.softmax(x, dim=1) # applicare la funzione softmax per ottenere
+        # una distribuzione di probabilità sulle azioni
+        return x
+
+# Creare un oggetto policy che istanzia la classe PolicyNet e lo sposta
+# sul dispositivo desiderato
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# scegliere il dispositivo (CPU o GPU)
+
+policy = PolicyNet().to(device) # creare la policy e spostarla sul dispositivo
+
+# Creare un oggetto optimizer che istanzia la classe optim.Adam e usa il tasso
+# di apprendimento desiderato
+
+optimizer = optim.Adam(policy.parameters(), lr=0.01) # creare l'optimizer e
+# passargli i parametri della policy e il tasso di apprendimento
+
+# Creare una lista saved_log_probs che memorizza i logaritmi delle probabilità
+# delle azioni scelte in ogni passo
+saved_log_probs = []
+
+# Creare una lista rewards che memorizza le ricompense ottenute in ogni passo
+rewards = []
+
+# Creare una funzione select_action che prende in input lo stato corrente e
+# restituisce l'azione scelta dalla policy
+
+def select_action(state):
+    # Calcolare la distribuzione di probabilità sulle azioni usando la policy
+    probs = policy(state)
+    # Campionare un'azione dalla distribuzione usando una distribuzione
+    # categorica
+
+    m = torch.distributions.Categorical(probs)
+    action = m.sample()
+    # Salvare il logaritmo della probabilità dell'azione scelta nella
+    # lista saved_log_probs
+
+    saved_log_probs.append(m.log_prob(action))
+    # Restituire l'azione scelta
+    return action.item()
+
+# Creare una funzione finish_episode che calcola il guadagno cumulativo futuro
+# per ogni passo e aggiorna la policy
+
+def finish_episode():
+    # Calcolare il guadagno cumulativo futuro per ogni passo, usando le
+    # ricompense memorizzate nella lista rewards e il fattore di sconto desiderato
+
+    R = 0 # inizializzare il guadagno cumulativo a zero
+    returns = [] # creare una lista vuota per memorizzare i guadagni
+    # cumulativi futuri
+
+    gamma = 0.99 # scegliere il fattore di sconto
+    for r in rewards[::-1]: # iterare le ricompense al contrario
+        R = r + gamma * R # calcolare il guadagno cumulativo futuro usando la
+        # formula ricorsiva
+
+        returns.insert(0, R) # inserire il guadagno cumulativo futuro nella
+        # lista returns in ordine cronologico
+    # Calcolare il gradiente del logaritmo della probabilità dell'azione
+    # scelta, moltiplicato per il guadagno cumulativo futuro, usando le
+    # probabilità memorizzate nella lista saved_log_probs
+
+    policy_loss = [] # creare una lista vuota per memorizzare le perdite
+    for log_prob, R in zip(saved_log_probs, returns):
+        # iterare le probabilità e i guadagni cumulativi futuri
+
+        policy_loss.append(-log_prob * R) # serve a calcolare la perdita come il
+        # prodotto negativo tra il logaritmo della probabilità dell’azione scelta
+        # e il guadagno cumulativo futuro.
+
+    # Aggiornare i parametri della policy usando l'optimizer e le perdite calcolate
+    optimizer.zero_grad() # azzerare i gradienti dell'optimizer
+    policy_loss = torch.cat(policy_loss).sum() # sommare le perdite
+    policy_loss.backward() # calcolare i gradienti retropropagando la perdita
+    optimizer.step() # aggiornare i parametri dell'optimizer
+
+
+
+
+
+
+
